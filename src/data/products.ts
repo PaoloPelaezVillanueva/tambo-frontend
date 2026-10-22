@@ -1,0 +1,77 @@
+
+import type { Product } from "../types/product";
+
+export const products: Product[] = [
+   {
+      id: 1,
+      name: "Arroz extra 1 kg",
+      description: "Arroz extra de grano seleccionado, ideal para acompañar tus comidas.",
+      cost: 4.5,
+      stock: 30,
+      category: "Abarrotes",
+      active: true
+   },
+   {
+      id: 2,
+      name: "Leche evaporada",
+      description: "Leche evaporada cremosa, ideal para bebidas y recetas.",
+      cost: 4.2,
+      stock: 20,
+      category: "Lácteos",
+      active: true,
+   },
+   {
+      id: 3,
+      name: "Gaseosa personal",
+      description: "Gaseosa refrescante en presentación personal.",
+      cost: 3.5,
+      stock: 25,
+      category: "Bebidas",
+      active: true,
+   },
+   {
+      id: 4,
+      name: "Pan de molde",
+      description: "Pan de molde suave, perfecto para preparar sándwiches.",
+      cost: 6.8,
+      stock: 15,
+      category: "Panadería",
+      active: true,
+   },
+   {
+      id: 5,
+      name: "Aceite vegetal 1 L",
+      description: "Aceite vegetal de un litro para cocinar tus comidas.",
+      cost: 8.9,
+      stock: 12,
+      category: "Abarrotes",
+      active: true,
+   },
+   {
+      id: 6,
+      name: "Huevos (docena)",
+      description: "Docena de huevos frescos para tus recetas diarias.",
+      cost: 8.0,
+      stock: 10,
+      category: "Huevos",
+      active: true,
+   },
+   {
+      id: 7,
+      name: "Galletas",
+      description: "Galletas crujientes ideales para disfrutar en cualquier momento.",
+      cost: 1.5,
+      stock: 40,
+      category: "Snacks",
+      active: true,
+   },
+   {
+      id: 8,
+      name: "Agua mineral",
+      description: "Agua mineral refrescante para hidratarte durante el día.",
+      cost: 2.0,
+      stock: 35,
+      category: "Bebidas",
+      active: true,
+   },
+];
