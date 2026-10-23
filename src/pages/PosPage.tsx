@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
    House,
    Package,
@@ -18,6 +18,8 @@ import { products } from "../data/products";
 import { useCart } from "../hooks/useCart";
 import type { Client } from "../types/client";
 import { getClients } from "../services/clientService";
+import type { Category } from "../types/category";
+import { getCategories } from "../services/categoryService";
 
 const formatCurrency = (amount: number) =>
    new Intl.NumberFormat("es-PE", {
@@ -37,57 +39,62 @@ const productEmojis: Record<number, string> = {
 };
 
 export default function PosVenta() {
-   const [search, setSearch] = useState("");
-   const [category, setCategory] = useState("Todos");
+   const [loadingPage, setLoadingPage] = useState(true);
+   const [pageError, setPageError] = useState("");
 
-   const [clients, setClients] = useState<Client[]>([]);
-   const [loadingClients, setLoadingClients] = useState(true);
+   const [search, setSearch] = useState("");
    const [clientSearch, setClientSearch] = useState("");
+   
+   const [categories, setCategories] = useState<Category[]>([]);
+   const [clients, setClients] = useState<Client[]>([]);
+   
+
+   const [selectedCategory, setSelectedCategory] = useState<Category>();
    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-   const [clientError, setClientError] = useState("");
    const [showClientDropdown, setShowClientDropdown] = useState(false);
 
-   const {
-      items,
-      totalItems,
-      total,
-      addItem,
-      decreaseItem,
-      increaseItem,
-      removeItem,
-      clearCart,
-   } = useCart();
+   const { items, totalItems, total, addItem, decreaseItem, increaseItem, removeItem, clearCart } = useCart();
 
-   const categories = ["Todos", ...new Set(products.map((product) => product.category))];
+   const loadInitialData = useCallback(async () => {
+      setLoadingPage(true);
+      setPageError("");
+
+      try {
+         const [categoriesData, clientsData] = await Promise.all([
+            getCategories(),
+            getClients()
+         ]);
+
+         const categoriesWithAll : Category[] = [
+            { id: 0, category: "Todos"},
+            ...categoriesData
+         ];
+
+         setCategories(categoriesWithAll);
+         setClients(clientsData);
+
+         setSelectedCategory(categoriesWithAll[0]);
+      } catch (error) {
+         console.error("Error al cargar datos iniciales:", error);
+         setPageError("No se pudieron cargar los datos iniciales para el POS de venta.");
+      } finally {
+         setLoadingPage(false);
+      }
+   }, []);
+
+   useEffect(() => {
+      void loadInitialData()
+   }, [loadInitialData]);
 
    const filteredProducts = useMemo(() => {
       return products.filter((product) => {
          const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase())
 
-         const matchesCategory = category === "Todos" || product.category === category;
+         const matchesCategory = selectedCategory?.category === "Todos" || product.category === selectedCategory?.category;
 
          return matchesSearch && matchesCategory;
       });
-   }, [search, category]);
-
-   useEffect(() => {
-      async function loadClients() {
-         try {
-            setLoadingClients(true);
-            setClientError("");
-
-            const data = await getClients();
-            setClients(data);
-         } catch (error) {
-            setClientError("No se pudieron cargar los clientes.");
-            console.error(error);
-         } finally {
-            setLoadingClients(false);
-         }
-      }
-
-      void loadClients();
-   }, [])
+   }, [search, selectedCategory]);
 
    const filteredClients = useMemo(() => {
       const query = clientSearch.trim().toLowerCase();
@@ -113,6 +120,46 @@ export default function PosVenta() {
       }
 
       alert(`Venta de ${formatCurrency(total)} lista para procesar.`);
+   }
+
+   if(loadingPage) {
+      return (
+         <div className="flex min-h-screen items-center justify-center bg-slate-50">
+            <div className="flex flex-col items-center gap-4">
+               <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
+
+               <p className="text-sm font-medium text-slate-600">
+                  Cargando POS de venta...
+               </p>
+
+               <p className="text-xs text-slate-400">
+                  Preparando productos, categorías y clientes.
+               </p>
+            </div>
+         </div>
+      );
+   }
+
+   if (pageError) {
+      return (
+         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4">
+            <p className="text-lg font-medium text-red-600">
+               ¡Ha ocurrido un error!
+            </p>
+
+            <p className="text-center text-sm text-slate-600">
+               {pageError}
+            </p>
+
+            <button
+               type="button"
+               onClick={() => void loadInitialData()}
+               className="cursor-pointer rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
+            >
+               Reintentar
+            </button>
+         </div>
+      );
    }
 
    return (
@@ -179,15 +226,15 @@ export default function PosVenta() {
                <div className="flex gap-2 pb-1">
                   {categories.map((item) => (
                      <button
-                        key={item}
-                        onClick={() => setCategory(item)}
+                        key={item.id}
+                        onClick={() => setSelectedCategory(item)}
                         className={`cursor-pointer shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
-                           category === item
+                           selectedCategory?.id === item.id
                               ? "bg-purple-600 text-white"
                               : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         }`}
                      >
-                        {item}
+                        {item.category}
                      </button>
                   ))}
                </div>
@@ -391,22 +438,7 @@ export default function PosVenta() {
                            showClientDropdown && (
                               <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                                  {
-                                    loadingClients ? (
-                                       <p className="px-4 py-3 text-center text-sm text-slate-500">
-                                          Cargando clientes...
-                                       </p>
-                                    ) : clientError ? (
-                                       <div className="px-4 py-3 text-center">
-                                          <p className="text-sm text-red-500">{clientError}</p>
-                                          <button
-                                             type="button"
-                                             onClick={() => window.location.reload()}
-                                             className="mt-2 cursor-pointer text-xs font-medium text-purple-600 hover:underline"
-                                          >
-                                             Recargar página
-                                          </button>
-                                       </div>
-                                    ) : clientSearch.trim() == "" ? (
+                                    clientSearch.trim() == "" ? (
                                        <p className="px-4 py-3 text-center text-sm text-slate-500">
                                           Escribe un nombre o DNI para buscar.
                                        </p>
@@ -425,6 +457,7 @@ export default function PosVenta() {
                                              <span className="text-sm font-medium text-slate-800">
                                                 {client.name} {client.lastname}
                                              </span>
+
                                              <span className="text-xs text-slate-500">
                                                 DNI: {client.dni}
                                              </span>
