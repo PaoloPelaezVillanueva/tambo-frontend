@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
    House,
    Package,
@@ -17,7 +17,7 @@ import Logo from "../assets/logo.png";
 import { products } from "../data/products";
 import { useCart } from "../hooks/useCart";
 import type { Client } from "../types/client";
-import { clients } from "../data/clients";
+import { getClients } from "../services/clientService";
 
 const formatCurrency = (amount: number) =>
    new Intl.NumberFormat("es-PE", {
@@ -40,8 +40,11 @@ export default function PosVenta() {
    const [search, setSearch] = useState("");
    const [category, setCategory] = useState("Todos");
 
+   const [clients, setClients] = useState<Client[]>([]);
+   const [loadingClients, setLoadingClients] = useState(true);
    const [clientSearch, setClientSearch] = useState("");
    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+   const [clientError, setClientError] = useState("");
    const [showClientDropdown, setShowClientDropdown] = useState(false);
 
    const {
@@ -67,6 +70,25 @@ export default function PosVenta() {
       });
    }, [search, category]);
 
+   useEffect(() => {
+      async function loadClients() {
+         try {
+            setLoadingClients(true);
+            setClientError("");
+
+            const data = await getClients();
+            setClients(data);
+         } catch (error) {
+            setClientError("No se pudieron cargar los clientes.");
+            console.error(error);
+         } finally {
+            setLoadingClients(false);
+         }
+      }
+
+      void loadClients();
+   }, [])
+
    const filteredClients = useMemo(() => {
       const query = clientSearch.trim().toLowerCase();
 
@@ -82,7 +104,7 @@ export default function PosVenta() {
             client.dni.includes(query)
          );
       });
-   }, [clientSearch]);
+   }, [clients, clientSearch]);
 
    function handlePayment() {
       if (items.length === 0) {
@@ -94,9 +116,9 @@ export default function PosVenta() {
    }
 
    return (
-      <div className="flex h-screen min-h-[600px] overflow-hidden bg-slate-100 text-slate-800">
+      <div className="flex h-screen min-h-150 overflow-hidden bg-slate-100 text-slate-800">
          {/* Barra lateral */}
-         <aside className="flex w-[68px] shrink-0 flex-col items-center border-r border-slate-200 bg-white py-5">
+         <aside className="flex w-17 shrink-0 flex-col items-center border-r border-slate-200 bg-white py-5">
             <div className="mb-10 flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 text-white">
                <Store size={22} />
             </div>
@@ -186,7 +208,7 @@ export default function PosVenta() {
                            key={product.id}
                            onClick={() => addItem(product)}
                            disabled={outOfStock}
-                           className="cursor-pointer group flex min-h-[190px] flex-col rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-purple-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                           className="cursor-pointer group flex min-h-47.5 flex-col rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-purple-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                         >
                            <div className="mb-3 flex h-24 w-full items-center justify-center rounded-lg bg-slate-50 text-5xl">
                               {productEmojis[product.id] ?? "📦"}
@@ -232,7 +254,7 @@ export default function PosVenta() {
          </main>
 
          {/* Carrito */}
-         <aside className="flex w-[340px] shrink-0 flex-col border-l border-slate-200 bg-white xl:w-[390px]">
+         <aside className="flex w-85 shrink-0 flex-col border-l border-slate-200 bg-white xl:w-97.5">
             <header className="flex items-center justify-between border-b border-slate-100 px-5 py-5">
                <div>
                   <h2 className="text-lg font-bold">Venta actual</h2>
@@ -317,7 +339,7 @@ export default function PosVenta() {
 
             {/* Cliente */}
             <div className="relative border-t border-slate-200 p-5">
-               <label className="mb-3 block text-sm font-semibold">Cliente:</label>
+               <label htmlFor="client-input" className="mb-3 block text-sm font-semibold">Cliente:</label>
                {
                   selectedClient ? (
                      <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50 p-3">
@@ -349,6 +371,7 @@ export default function PosVenta() {
                      <div className="relative">
                         <Search size={19} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
                         <input
+                           id="client-input"
                            type="text"
                            value={clientSearch}
                            onChange={(event) => {
@@ -365,10 +388,29 @@ export default function PosVenta() {
                         />
 
                         {
-                           showClientDropdown && clientSearch.trim() !== "" && (
+                           showClientDropdown && (
                               <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                                  {
-                                    filteredClients.length > 0 ? (
+                                    loadingClients ? (
+                                       <p className="px-4 py-3 text-center text-sm text-slate-500">
+                                          Cargando clientes...
+                                       </p>
+                                    ) : clientError ? (
+                                       <div className="px-4 py-3 text-center">
+                                          <p className="text-sm text-red-500">{clientError}</p>
+                                          <button
+                                             type="button"
+                                             onClick={() => window.location.reload()}
+                                             className="mt-2 cursor-pointer text-xs font-medium text-purple-600 hover:underline"
+                                          >
+                                             Recargar página
+                                          </button>
+                                       </div>
+                                    ) : clientSearch.trim() == "" ? (
+                                       <p className="px-4 py-3 text-center text-sm text-slate-500">
+                                          Escribe un nombre o DNI para buscar.
+                                       </p>
+                                    ) : filteredClients.length > 0 ? (
                                        filteredClients.map((client) => (
                                           <button
                                              key={client.id}
@@ -378,14 +420,18 @@ export default function PosVenta() {
                                                 setClientSearch("");
                                                 setShowClientDropdown(false);
                                              }}
-                                             className="cursor-pointer flex w-full flex-col gap-1 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-purple-50"
+                                             className="flex w-full cursor-pointer flex-col gap-1 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-purple-50"
                                           >
-                                             <span className="text-sm font-medium text-slate-800">{client.name} {client.lastname}</span>
-                                             <span className="text-xs text-slate-500">DNI: {client.dni}</span>
+                                             <span className="text-sm font-medium text-slate-800">
+                                                {client.name} {client.lastname}
+                                             </span>
+                                             <span className="text-xs text-slate-500">
+                                                DNI: {client.dni}
+                                             </span>
                                           </button>
                                        ))
                                     ) : (
-                                       <p className="px-4 py-3 text-sm text-slate-500 text-center">
+                                       <p className="px-4 py-3 text-center text-sm tesl500">
                                           No se encontraron clientes.
                                        </p>
                                     )
