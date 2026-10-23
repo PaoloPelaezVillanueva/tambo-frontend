@@ -14,28 +14,23 @@ import {
    X
 } from "lucide-react";
 import Logo from "../assets/logo.png";
-import { products } from "../data/products";
 import { useCart } from "../hooks/useCart";
 import type { Client } from "../types/client";
 import { getClients } from "../services/clientService";
 import type { Category } from "../types/category";
 import { getCategories } from "../services/categoryService";
-
-const formatCurrency = (amount: number) =>
-   new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-   }).format(amount);
+import type { Product } from "../types/product";
+import { getProducts } from "../services/productService";
+import { CurrencyFormatter } from "../helpers/currencyHelper";
 
 const productEmojis: Record<number, string> = {
    1: "🌾",
    2: "🥛",
    3: "🥤",
    4: "🍞",
-   5: "🫗",
-   6: "🥚",
-   7: "🍪",
-   8: "💧",
+   6: "🍬",
+   7: "🫗",
+   8: "🍫",
 };
 
 export default function PosVenta() {
@@ -46,8 +41,8 @@ export default function PosVenta() {
    const [clientSearch, setClientSearch] = useState("");
    
    const [categories, setCategories] = useState<Category[]>([]);
+   const [products, setProducts] = useState<Product[]>([]);
    const [clients, setClients] = useState<Client[]>([]);
-   
 
    const [selectedCategory, setSelectedCategory] = useState<Category>();
    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -60,8 +55,9 @@ export default function PosVenta() {
       setPageError("");
 
       try {
-         const [categoriesData, clientsData] = await Promise.all([
+         const [categoriesData, productsData, clientsData] = await Promise.all([
             getCategories(),
+            getProducts(),
             getClients()
          ]);
 
@@ -71,6 +67,7 @@ export default function PosVenta() {
          ];
 
          setCategories(categoriesWithAll);
+         setProducts(productsData);
          setClients(clientsData);
 
          setSelectedCategory(categoriesWithAll[0]);
@@ -90,11 +87,11 @@ export default function PosVenta() {
       return products.filter((product) => {
          const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase())
 
-         const matchesCategory = selectedCategory?.category === "Todos" || product.category === selectedCategory?.category;
+         const matchesCategory = selectedCategory?.category === "Todos" || product.category.category === selectedCategory?.category;
 
          return matchesSearch && matchesCategory;
       });
-   }, [search, selectedCategory]);
+   }, [products, search, selectedCategory]);
 
    const filteredClients = useMemo(() => {
       const query = clientSearch.trim().toLowerCase();
@@ -119,7 +116,7 @@ export default function PosVenta() {
          return;
       }
 
-      alert(`Venta de ${formatCurrency(total)} lista para procesar.`);
+      alert(`Venta de ${CurrencyFormatter.format(total)} lista para procesar.`);
    }
 
    if(loadingPage) {
@@ -217,7 +214,7 @@ export default function PosVenta() {
                   <input
                      value={search}
                      onChange={(event) => setSearch(event.target.value)}
-                     placeholder="Buscar producto o código..."
+                     placeholder="Buscar producto..."
                      className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                   />
                </div>
@@ -258,7 +255,7 @@ export default function PosVenta() {
                            className="cursor-pointer group flex min-h-47.5 flex-col rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-purple-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                         >
                            <div className="mb-3 flex h-24 w-full items-center justify-center rounded-lg bg-slate-50 text-5xl">
-                              {productEmojis[product.id] ?? "📦"}
+                              {productEmojis[product.category.id] ?? "📦"}
                            </div>
 
                            <h2 className="mt-1 line-clamp-2 text-md font-semibold mb-2">
@@ -267,7 +264,7 @@ export default function PosVenta() {
 
                            <div>
                               <span className="rounded-lg text-[12px] bg-purple-50 p-1.5 text-purple-600">
-                                 {product.category}
+                                 {product.category.category}
                               </span>
                            </div>
 
@@ -278,7 +275,7 @@ export default function PosVenta() {
 
                            <div className="mt-auto flex w-full items-center justify-between gap-2 pt-3">
                               <span className="font-bold text-purple-600">
-                                 {formatCurrency(product.cost)}
+                                 {CurrencyFormatter.format(product.cost)}
                               </span>
 
                               <span className="text-[12px] text-slate-500">
@@ -332,7 +329,7 @@ export default function PosVenta() {
                   items.map((item) => (
                      <div key={item.product.id} className="flex gap-3 border-b border-slate-100 pb-4">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-2xl">
-                           {productEmojis[item.product.id] ?? "📦"}
+                           {productEmojis[item.product.category.id] ?? "📦"}
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -341,7 +338,7 @@ export default function PosVenta() {
                            </h3>
 
                            <p className="mt-1 text-xs text-slate-500">
-                              {formatCurrency(item.product.cost)}
+                              {CurrencyFormatter.format(item.product.cost)}
                            </p>
 
                            <div className="mt-3 flex items-center gap-2">
@@ -377,7 +374,7 @@ export default function PosVenta() {
                         </div>
 
                         <p className="shrink-0 text-sm font-bold">
-                           {formatCurrency(item.product.cost * item.quantity)}
+                           {CurrencyFormatter.format(item.product.cost * item.quantity)}
                         </p>
                      </div>
                   ))
@@ -481,13 +478,13 @@ export default function PosVenta() {
             <div className="space-y-4 border-t border-slate-200 p-5">
                <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(total)}</span>
+                  <span className="font-medium">{CurrencyFormatter.format(total)}</span>
                </div>
 
                <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                   <span className="font-semibold">Total a pagar</span>
                   <span className="text-xl font-bold text-purple-600">
-                     {formatCurrency(total)}
+                     {CurrencyFormatter.format(total)}
                   </span>
                </div>
 
