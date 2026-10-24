@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import {
    House,
    Package,
@@ -22,6 +22,16 @@ import { getCategories } from "../services/categoryService";
 import type { Product } from "../types/product";
 import { getProducts } from "../services/productService";
 import { CurrencyFormatter } from "../helpers/currencyHelper";
+import type { SaleRequest } from "../types/requests/saleRequest";
+import { createSale } from "../services/saleService";
+
+const authenticatedUser = {
+   id: 2,
+   name: "Carlos",
+   lastname: "Ramírez",
+   user: "cramirez",
+   role: 2
+}
 
 const productEmojis: Record<number, string> = {
    1: "🌾",
@@ -47,6 +57,9 @@ export default function PosVenta() {
    const [selectedCategory, setSelectedCategory] = useState<Category>();
    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
    const [showClientDropdown, setShowClientDropdown] = useState(false);
+
+   const [processingSale, setProcessingSale] = useState(false);
+   const [saleError, setSaleError] = useState("");
 
    const { items, totalItems, total, addItem, decreaseItem, increaseItem, removeItem, clearCart } = useCart();
 
@@ -110,13 +123,57 @@ export default function PosVenta() {
       });
    }, [clients, clientSearch]);
 
-   function handlePayment() {
+   async function processSale(userId: number | null) {
       if (items.length === 0) {
-         alert("Agrega productos antes de cobrar.");
+         setSaleError("Agrega productos antes de cobrar.");
          return;
       }
 
-      alert(`Venta de ${CurrencyFormatter.format(total)} lista para procesar.`);
+      if(userId == null) {
+         setSaleError("No se pudo identificar al usuario.");
+         return;
+      }
+
+      const request: SaleRequest = {
+         client: selectedClient?.id ?? null,
+         user: userId,
+         details: items.map((item) => ({
+            product: item.product.id,
+            quantity: item.quantity
+         }))
+      };
+
+      try {
+         setProcessingSale(true);
+         setSaleError("");
+
+         await createSale(request);
+
+         clearCart();
+         setSelectedClient(null);
+         setClientSearch("");
+         setShowClientDropdown(false);
+
+         try {
+            const updatedProducts = await getProducts();
+            setProducts(updatedProducts);
+
+            alert("Venta registrada correctamente.");
+         } catch (refreshError) {
+            console.error("Error al actualizar el producto:", refreshError);
+            alert("La venta se registró correctamente, pero no se pudo actualizar la lista de productos.")
+         }
+      } catch (error) {
+         console.error("Error al registrar la venta:", error);
+         
+         setSaleError(
+            error instanceof Error
+               ? error.message
+               : "No se pudo registrar la venta."
+         );
+      } finally {
+         setProcessingSale(false);
+      }
    }
 
    if(loadingPage) {
@@ -195,8 +252,8 @@ export default function PosVenta() {
                </div>
 
                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium">Marcos Gomez</p>
-                  <p className="text-xs text-slate-500">Colaborador</p>
+                  <p className="text-sm font-medium">{authenticatedUser.name} {authenticatedUser.lastname}</p>
+                  <p className="text-xs text-slate-500">{authenticatedUser.role === 1 ? 'Admin': 'Colaborador'}</p>
                </div>
             </header>
 
@@ -488,13 +545,21 @@ export default function PosVenta() {
                   </span>
                </div>
 
+               {
+                  saleError && (
+                     <p className="mb-3 text-sm text-red-600">
+                        {saleError}
+                     </p>
+                  )
+               }
+
                <button
-                  onClick={handlePayment}
-                  disabled={items.length === 0}
+                  onClick={() => void processSale(authenticatedUser.id)}
+                  disabled={items.length === 0 || processingSale}
                   className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3.5 font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                >
                   <CreditCard size={19} />
-                  Procesar venta
+                  {processingSale ? "Registrando venta..." : "Procesar venta"}
                </button>
             </div>
          </aside>
