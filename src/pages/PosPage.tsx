@@ -24,6 +24,7 @@ import { getProducts } from "../services/productService";
 import { CurrencyFormatter } from "../helpers/currencyHelper";
 import type { SaleRequest } from "../types/requests/saleRequest";
 import { createSale } from "../services/saleService";
+import { toast } from "react-toastify";
 
 const authenticatedUser = {
    id: 2,
@@ -59,7 +60,6 @@ export default function PosVenta() {
    const [showClientDropdown, setShowClientDropdown] = useState(false);
 
    const [processingSale, setProcessingSale] = useState(false);
-   const [saleError, setSaleError] = useState("");
 
    const { items, totalItems, total, addItem, decreaseItem, increaseItem, removeItem, clearCart } = useCart();
 
@@ -125,12 +125,12 @@ export default function PosVenta() {
 
    async function processSale(userId: number | null) {
       if (items.length === 0) {
-         setSaleError("Agrega productos antes de cobrar.");
+         toast.warning("Agrega productos antes de cobrar.");
          return;
       }
 
       if(userId == null) {
-         setSaleError("No se pudo identificar al usuario.");
+         toast.error("No se pudo identificar al usuario.");
          return;
       }
 
@@ -145,7 +145,6 @@ export default function PosVenta() {
 
       try {
          setProcessingSale(true);
-         setSaleError("");
 
          await createSale(request);
 
@@ -158,15 +157,15 @@ export default function PosVenta() {
             const updatedProducts = await getProducts();
             setProducts(updatedProducts);
 
-            alert("Venta registrada correctamente.");
+            toast.success("Venta registrada correctamente.");
          } catch (refreshError) {
             console.error("Error al actualizar el producto:", refreshError);
-            alert("La venta se registró correctamente, pero no se pudo actualizar la lista de productos.")
+            toast.warning("La venta se registró correctamente, pero no se pudo actualizar la lista de productos.")
          }
       } catch (error) {
          console.error("Error al registrar la venta:", error);
          
-         setSaleError(
+         toast.error(
             error instanceof Error
                ? error.message
                : "No se pudo registrar la venta."
@@ -544,14 +543,6 @@ export default function PosVenta() {
                      {CurrencyFormatter.format(total)}
                   </span>
                </div>
-
-               {
-                  saleError && (
-                     <p className="mb-3 text-sm text-red-600">
-                        {saleError}
-                     </p>
-                  )
-               }
 
                <button
                   onClick={() => void processSale(authenticatedUser.id)}
