@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
    House,
    Package,
@@ -14,58 +14,97 @@ import {
    X
 } from "lucide-react";
 import Logo from "../assets/logo.png";
-import { products } from "../data/products";
 import { useCart } from "../hooks/useCart";
 import type { Client } from "../types/client";
-import { clients } from "../data/clients";
+import { getClients } from "../services/clientService";
+import type { Category } from "../types/category";
+import { getCategories } from "../services/categoryService";
+import type { Product } from "../types/product";
+import { getProducts } from "../services/productService";
+import { CurrencyFormatter } from "../helpers/currencyHelper";
+import type { SaleRequest } from "../types/requests/saleRequest";
+import { createSale } from "../services/saleService";
 
-const formatCurrency = (amount: number) =>
-   new Intl.NumberFormat("es-PE", {
-      style: "currency",
-      currency: "PEN",
-   }).format(amount);
+const authenticatedUser = {
+   id: 2,
+   name: "Carlos",
+   lastname: "Ramírez",
+   user: "cramirez",
+   role: 2
+}
 
 const productEmojis: Record<number, string> = {
    1: "🌾",
    2: "🥛",
    3: "🥤",
    4: "🍞",
-   5: "🫗",
-   6: "🥚",
-   7: "🍪",
-   8: "💧",
+   6: "🍬",
+   7: "🫗",
+   8: "🍫",
 };
 
 export default function PosVenta() {
-   const [search, setSearch] = useState("");
-   const [category, setCategory] = useState("Todos");
+   const [loadingPage, setLoadingPage] = useState(true);
+   const [pageError, setPageError] = useState("");
 
+   const [search, setSearch] = useState("");
    const [clientSearch, setClientSearch] = useState("");
+   
+   const [categories, setCategories] = useState<Category[]>([]);
+   const [products, setProducts] = useState<Product[]>([]);
+   const [clients, setClients] = useState<Client[]>([]);
+
+   const [selectedCategory, setSelectedCategory] = useState<Category>();
    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
    const [showClientDropdown, setShowClientDropdown] = useState(false);
 
-   const {
-      items,
-      totalItems,
-      total,
-      addItem,
-      decreaseItem,
-      increaseItem,
-      removeItem,
-      clearCart,
-   } = useCart();
+   const [processingSale, setProcessingSale] = useState(false);
+   const [saleError, setSaleError] = useState("");
 
-   const categories = ["Todos", ...new Set(products.map((product) => product.category))];
+   const { items, totalItems, total, addItem, decreaseItem, increaseItem, removeItem, clearCart } = useCart();
+
+   const loadInitialData = useCallback(async () => {
+      setLoadingPage(true);
+      setPageError("");
+
+      try {
+         const [categoriesData, productsData, clientsData] = await Promise.all([
+            getCategories(),
+            getProducts(),
+            getClients()
+         ]);
+
+         const categoriesWithAll : Category[] = [
+            { id: 0, category: "Todos"},
+            ...categoriesData
+         ];
+
+         setCategories(categoriesWithAll);
+         setProducts(productsData);
+         setClients(clientsData);
+
+         setSelectedCategory(categoriesWithAll[0]);
+      } catch (error) {
+         console.error("Error al cargar datos iniciales:", error);
+         setPageError("No se pudieron cargar los datos iniciales para el POS de venta.");
+      } finally {
+         setLoadingPage(false);
+      }
+   }, []);
+
+   useEffect(() => {
+      void loadInitialData()
+   }, [loadInitialData]);
 
    const filteredProducts = useMemo(() => {
       return products.filter((product) => {
          const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase())
 
-         const matchesCategory = category === "Todos" || product.category === category;
+         const matchesCategory = selectedCategory?.category === "Todos" || product.category.category === selectedCategory?.category;
 
          return matchesSearch && matchesCategory;
       });
-   }, [search, category]);
+   }, [products, search, selectedCategory]);
 
    const filteredClients = useMemo(() => {
       const query = clientSearch.trim().toLowerCase();
@@ -82,21 +121,105 @@ export default function PosVenta() {
             client.dni.includes(query)
          );
       });
-   }, [clientSearch]);
+   }, [clients, clientSearch]);
 
-   function handlePayment() {
+   async function processSale(userId: number | null) {
       if (items.length === 0) {
-         alert("Agrega productos antes de cobrar.");
+         setSaleError("Agrega productos antes de cobrar.");
          return;
       }
 
-      alert(`Venta de ${formatCurrency(total)} lista para procesar.`);
+      if(userId == null) {
+         setSaleError("No se pudo identificar al usuario.");
+         return;
+      }
+
+      const request: SaleRequest = {
+         client: selectedClient?.id ?? null,
+         user: userId,
+         details: items.map((item) => ({
+            product: item.product.id,
+            quantity: item.quantity
+         }))
+      };
+
+      try {
+         setProcessingSale(true);
+         setSaleError("");
+
+         await createSale(request);
+
+         clearCart();
+         setSelectedClient(null);
+         setClientSearch("");
+         setShowClientDropdown(false);
+
+         try {
+            const updatedProducts = await getProducts();
+            setProducts(updatedProducts);
+
+            alert("Venta registrada correctamente.");
+         } catch (refreshError) {
+            console.error("Error al actualizar el producto:", refreshError);
+            alert("La venta se registró correctamente, pero no se pudo actualizar la lista de productos.")
+         }
+      } catch (error) {
+         console.error("Error al registrar la venta:", error);
+         
+         setSaleError(
+            error instanceof Error
+               ? error.message
+               : "No se pudo registrar la venta."
+         );
+      } finally {
+         setProcessingSale(false);
+      }
+   }
+
+   if(loadingPage) {
+      return (
+         <div className="flex min-h-screen items-center justify-center bg-slate-50">
+            <div className="flex flex-col items-center gap-4">
+               <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
+
+               <p className="text-sm font-medium text-slate-600">
+                  Cargando POS de venta...
+               </p>
+
+               <p className="text-xs text-slate-400">
+                  Preparando productos, categorías y clientes.
+               </p>
+            </div>
+         </div>
+      );
+   }
+
+   if (pageError) {
+      return (
+         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4">
+            <p className="text-lg font-medium text-red-600">
+               ¡Ha ocurrido un error!
+            </p>
+
+            <p className="text-center text-sm text-slate-600">
+               {pageError}
+            </p>
+
+            <button
+               type="button"
+               onClick={() => void loadInitialData()}
+               className="cursor-pointer rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
+            >
+               Reintentar
+            </button>
+         </div>
+      );
    }
 
    return (
-      <div className="flex h-screen min-h-[600px] overflow-hidden bg-slate-100 text-slate-800">
+      <div className="flex h-screen min-h-150 overflow-hidden bg-slate-100 text-slate-800">
          {/* Barra lateral */}
-         <aside className="flex w-[68px] shrink-0 flex-col items-center border-r border-slate-200 bg-white py-5">
+         <aside className="flex w-17 shrink-0 flex-col items-center border-r border-slate-200 bg-white py-5">
             <div className="mb-10 flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 text-white">
                <Store size={22} />
             </div>
@@ -129,8 +252,8 @@ export default function PosVenta() {
                </div>
 
                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium">Marcos Gomez</p>
-                  <p className="text-xs text-slate-500">Colaborador</p>
+                  <p className="text-sm font-medium">{authenticatedUser.name} {authenticatedUser.lastname}</p>
+                  <p className="text-xs text-slate-500">{authenticatedUser.role === 1 ? 'Admin': 'Colaborador'}</p>
                </div>
             </header>
 
@@ -148,7 +271,7 @@ export default function PosVenta() {
                   <input
                      value={search}
                      onChange={(event) => setSearch(event.target.value)}
-                     placeholder="Buscar producto o código..."
+                     placeholder="Buscar producto..."
                      className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                   />
                </div>
@@ -157,15 +280,15 @@ export default function PosVenta() {
                <div className="flex gap-2 pb-1">
                   {categories.map((item) => (
                      <button
-                        key={item}
-                        onClick={() => setCategory(item)}
+                        key={item.id}
+                        onClick={() => setSelectedCategory(item)}
                         className={`cursor-pointer shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
-                           category === item
+                           selectedCategory?.id === item.id
                               ? "bg-purple-600 text-white"
                               : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         }`}
                      >
-                        {item}
+                        {item.category}
                      </button>
                   ))}
                </div>
@@ -186,10 +309,10 @@ export default function PosVenta() {
                            key={product.id}
                            onClick={() => addItem(product)}
                            disabled={outOfStock}
-                           className="cursor-pointer group flex min-h-[190px] flex-col rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-purple-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                           className="cursor-pointer group flex min-h-47.5 flex-col rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-purple-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                         >
                            <div className="mb-3 flex h-24 w-full items-center justify-center rounded-lg bg-slate-50 text-5xl">
-                              {productEmojis[product.id] ?? "📦"}
+                              {productEmojis[product.category.id] ?? "📦"}
                            </div>
 
                            <h2 className="mt-1 line-clamp-2 text-md font-semibold mb-2">
@@ -198,7 +321,7 @@ export default function PosVenta() {
 
                            <div>
                               <span className="rounded-lg text-[12px] bg-purple-50 p-1.5 text-purple-600">
-                                 {product.category}
+                                 {product.category.category}
                               </span>
                            </div>
 
@@ -209,7 +332,7 @@ export default function PosVenta() {
 
                            <div className="mt-auto flex w-full items-center justify-between gap-2 pt-3">
                               <span className="font-bold text-purple-600">
-                                 {formatCurrency(product.cost)}
+                                 {CurrencyFormatter.format(product.cost)}
                               </span>
 
                               <span className="text-[12px] text-slate-500">
@@ -232,7 +355,7 @@ export default function PosVenta() {
          </main>
 
          {/* Carrito */}
-         <aside className="flex w-[340px] shrink-0 flex-col border-l border-slate-200 bg-white xl:w-[390px]">
+         <aside className="flex w-85 shrink-0 flex-col border-l border-slate-200 bg-white xl:w-97.5">
             <header className="flex items-center justify-between border-b border-slate-100 px-5 py-5">
                <div>
                   <h2 className="text-lg font-bold">Venta actual</h2>
@@ -263,7 +386,7 @@ export default function PosVenta() {
                   items.map((item) => (
                      <div key={item.product.id} className="flex gap-3 border-b border-slate-100 pb-4">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-2xl">
-                           {productEmojis[item.product.id] ?? "📦"}
+                           {productEmojis[item.product.category.id] ?? "📦"}
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -272,7 +395,7 @@ export default function PosVenta() {
                            </h3>
 
                            <p className="mt-1 text-xs text-slate-500">
-                              {formatCurrency(item.product.cost)}
+                              {CurrencyFormatter.format(item.product.cost)}
                            </p>
 
                            <div className="mt-3 flex items-center gap-2">
@@ -308,7 +431,7 @@ export default function PosVenta() {
                         </div>
 
                         <p className="shrink-0 text-sm font-bold">
-                           {formatCurrency(item.product.cost * item.quantity)}
+                           {CurrencyFormatter.format(item.product.cost * item.quantity)}
                         </p>
                      </div>
                   ))
@@ -317,7 +440,7 @@ export default function PosVenta() {
 
             {/* Cliente */}
             <div className="relative border-t border-slate-200 p-5">
-               <label className="mb-3 block text-sm font-semibold">Cliente:</label>
+               <label htmlFor="client-input" className="mb-3 block text-sm font-semibold">Cliente:</label>
                {
                   selectedClient ? (
                      <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50 p-3">
@@ -349,6 +472,7 @@ export default function PosVenta() {
                      <div className="relative">
                         <Search size={19} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
                         <input
+                           id="client-input"
                            type="text"
                            value={clientSearch}
                            onChange={(event) => {
@@ -365,10 +489,14 @@ export default function PosVenta() {
                         />
 
                         {
-                           showClientDropdown && clientSearch.trim() !== "" && (
+                           showClientDropdown && (
                               <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                                  {
-                                    filteredClients.length > 0 ? (
+                                    clientSearch.trim() == "" ? (
+                                       <p className="px-4 py-3 text-center text-sm text-slate-500">
+                                          Escribe un nombre o DNI para buscar.
+                                       </p>
+                                    ) : filteredClients.length > 0 ? (
                                        filteredClients.map((client) => (
                                           <button
                                              key={client.id}
@@ -378,14 +506,19 @@ export default function PosVenta() {
                                                 setClientSearch("");
                                                 setShowClientDropdown(false);
                                              }}
-                                             className="cursor-pointer flex w-full flex-col gap-1 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-purple-50"
+                                             className="flex w-full cursor-pointer flex-col gap-1 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-purple-50"
                                           >
-                                             <span className="text-sm font-medium text-slate-800">{client.name} {client.lastname}</span>
-                                             <span className="text-xs text-slate-500">DNI: {client.dni}</span>
+                                             <span className="text-sm font-medium text-slate-800">
+                                                {client.name} {client.lastname}
+                                             </span>
+
+                                             <span className="text-xs text-slate-500">
+                                                DNI: {client.dni}
+                                             </span>
                                           </button>
                                        ))
                                     ) : (
-                                       <p className="px-4 py-3 text-sm text-slate-500 text-center">
+                                       <p className="px-4 py-3 text-center text-sm tesl500">
                                           No se encontraron clientes.
                                        </p>
                                     )
@@ -402,23 +535,31 @@ export default function PosVenta() {
             <div className="space-y-4 border-t border-slate-200 p-5">
                <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(total)}</span>
+                  <span className="font-medium">{CurrencyFormatter.format(total)}</span>
                </div>
 
                <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                   <span className="font-semibold">Total a pagar</span>
                   <span className="text-xl font-bold text-purple-600">
-                     {formatCurrency(total)}
+                     {CurrencyFormatter.format(total)}
                   </span>
                </div>
 
+               {
+                  saleError && (
+                     <p className="mb-3 text-sm text-red-600">
+                        {saleError}
+                     </p>
+                  )
+               }
+
                <button
-                  onClick={handlePayment}
-                  disabled={items.length === 0}
+                  onClick={() => void processSale(authenticatedUser.id)}
+                  disabled={items.length === 0 || processingSale}
                   className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3.5 font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                >
                   <CreditCard size={19} />
-                  Procesar venta
+                  {processingSale ? "Registrando venta..." : "Procesar venta"}
                </button>
             </div>
          </aside>
