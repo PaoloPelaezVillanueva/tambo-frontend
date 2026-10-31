@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-   House,
    Package,
-   ReceiptText,
-   Settings,
    Search,
    Plus,
    Minus,
    Trash2,
    ShoppingCart,
-   Store,
    CreditCard,
    X
 } from "lucide-react";
-import Logo from "../assets/logo.png";
 import { useCart } from "../hooks/useCart";
 import type { Client } from "../types/client";
 import { getClients } from "../services/clientService";
@@ -172,11 +167,11 @@ export default function PosPage() {
 
    if(loadingPage) {
       return (
-         <div className="flex min-h-screen items-center justify-center bg-slate-50">
+         <div className="flex h-full min-h-0 items-center justify-center bg-slate-50 dark:bg-slate-950">
             <div className="flex flex-col items-center gap-4">
-               <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
+               <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600 dark:border-purple-400 dark:border-t-purple-900" />
 
-               <p className="text-sm font-medium text-slate-600">
+               <p className="text-sm font-medium text-slate-600 dark:text-white">
                   Cargando POS de venta...
                </p>
 
@@ -190,7 +185,7 @@ export default function PosPage() {
 
    if (pageError) {
       return (
-         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4">
+         <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-slate-50 px-4">
             <p className="text-lg font-medium text-red-600">
                ¡Ha ocurrido un error!
             </p>
@@ -211,47 +206,10 @@ export default function PosPage() {
    }
 
    return (
-      <div className="flex h-screen min-h-150 overflow-hidden bg-slate-100 text-slate-800">
-         {/* Barra lateral */}
-         <aside className="flex w-17 shrink-0 flex-col items-center border-r border-slate-200 bg-white py-5">
-            <div className="mb-10 flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 text-white">
-               <Store size={22} />
-            </div>
-
-            <nav className="flex flex-1 flex-col gap-4">
-               <button title="Inicio" className="cursor-pointer rounded-xl bg-purple-50 p-3 text-purple-600">
-                  <House size={21} />
-               </button>
-
-               <button title="Productos" className="cursor-pointer rounded-xl p-3 text-slate-500 hover:bg-slate-100">
-                  <Package size={21} />
-               </button>
-
-               <button title="Ventas" className="cursor-pointer rounded-xl p-3 text-slate-500 hover:bg-slate-100">
-                  <ReceiptText size={21} />
-               </button>
-            </nav>
-
-            <button title="Configuración" className="cursor-pointer rounded-xl p-3 text-slate-500 hover:bg-slate-100">
-               <Settings size={21} />
-            </button>
-         </aside>
-
+      <main className="flex h-full min-h-0 min-w-0 overflow-hidden bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
          {/* Catálogo */}
-         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4">
-               <div>
-                  <img src={Logo} alt="Logo tambo" className="h-12 object-contain" />
-                  <p className="text-sm text-slate-500">Punto de venta</p>
-               </div>
-
-               <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium">{user?.name} {user?.lastname}</p>
-                  <p className="text-xs text-slate-500">{user?.role.id === 1 ? 'Admin': 'Colaborador'}</p>
-               </div>
-            </header>
-
-            <section className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5 sm:p-6">
+         <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
+            <section className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain custom-scrollbar p-5 sm:p-6">
                <div>
                   <h1 className="text-xl font-bold">Nueva venta</h1>
                   <p className="mt-1 text-sm text-slate-500">
@@ -261,12 +219,12 @@ export default function PosPage() {
 
                {/* Búsqueda */}
                <div className="relative">
-                  <Search size={19} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                  <Search size={19} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"/>
                   <input
                      value={search}
                      onChange={(event) => setSearch(event.target.value)}
                      placeholder="Buscar producto..."
-                     className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+                     className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-purple-500 dark:focus:ring-purple-900/30"
                   />
                </div>
 
@@ -279,7 +237,7 @@ export default function PosPage() {
                         className={`cursor-pointer shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
                            selectedCategory?.id === item.id
                               ? "bg-purple-600 text-white"
-                              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                              : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                         }`}
                      >
                         {item.category}
@@ -303,9 +261,9 @@ export default function PosPage() {
                            key={product.id}
                            onClick={() => addItem(product)}
                            disabled={outOfStock}
-                           className="cursor-pointer group flex min-h-47.5 flex-col rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-purple-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                           className="cursor-pointer group flex min-h-47.5 flex-col rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-purple-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-purple-700 dark:hover:shadow-purple-950/20"
                         >
-                           <div className="mb-3 flex h-24 w-full items-center justify-center rounded-lg bg-slate-50 text-5xl">
+                           <div className="mb-3 flex h-24 w-full items-center justify-center rounded-lg bg-slate-50 text-5xl dark:bg-slate-800">
                               {productEmojis[product.category.id] ?? "📦"}
                            </div>
 
@@ -314,22 +272,22 @@ export default function PosPage() {
                            </h2>
 
                            <div>
-                              <span className="rounded-lg text-[12px] bg-purple-50 p-1.5 text-purple-600">
+                              <span className="rounded-lg text-[12px] bg-purple-50 p-1.5 text-purple-600 dark:bg-purple-950/50 dark:text-purple-300">
                                  {product.category.category}
                               </span>
                            </div>
 
 
-                           <h3 className="text-gray-500 pt-3 text-sm">
+                           <h3 className="pt-3 text-sm text-slate-500 dark:text-slate-400">
                               {product.description}
                            </h3>
 
                            <div className="mt-auto flex w-full items-center justify-between gap-2 pt-3">
-                              <span className="font-bold text-purple-600">
+                              <span className="font-bold text-purple-600 dark:text-purple-400">
                                  {CurrencyFormatter.format(product.cost)}
                               </span>
 
-                              <span className="text-[12px] text-slate-500">
+                              <span className="text-[12px] text-slate-500 dark:text-slate-400">
                                  Stock: {product.stock}
                               </span>
                            </div>
@@ -339,47 +297,47 @@ export default function PosPage() {
                </div>
 
                {filteredProducts.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-                     <Package className="mx-auto mb-3 text-slate-400" size={32} />
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-slate-900">
+                     <Package className="mx-auto mb-3 text-slate-400 dark:text-slate-500" size={32} />
                      <p className="font-medium">No se encontraron productos</p>
                      <p className="mt-1 text-sm text-slate-500">Prueba con otro nombre o categoría.</p>
                   </div>
                )}
             </section>
-         </main>
+         </div>
 
          {/* Carrito */}
-         <aside className="flex w-85 shrink-0 flex-col border-l border-slate-200 bg-white xl:w-97.5">
-            <header className="flex items-center justify-between border-b border-slate-100 px-5 py-5">
+         <aside className="flex h-full min-h-0 w-85 shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 xl:w-97.5">
+            <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-5 dark:border-slate-800">
                <div>
                   <h2 className="text-lg font-bold">Venta actual</h2>
-                  <p className="mt-1 text-xs text-slate-500">Pedido #0001 · {totalItems} unidades</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Pedido #0001 · {totalItems} unidades</p>
                </div>
 
                <button
                   onClick={clearCart}
                   disabled={items.length === 0}
-                  className="cursor-pointer text-sm font-medium text-red-500 hover:text-red-700 disabled:opacity-40"
+                  className="cursor-pointer text-sm font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
                >
                   Limpiar
                </button>
             </header>
 
             {/* Lista de productos del carrito */}
-            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto custom-scrollbar p-5">
                {items.length === 0 ? (
                   <div className="flex h-full min-h-48 flex-col items-center justify-center text-center">
-                     <div className="mb-3 rounded-full bg-slate-100 p-4">
-                        <ShoppingCart size={28} className="text-slate-400" />
+                     <div className="mb-3 rounded-full bg-slate-100 p-4 dark:bg-slate-800">
+                        <ShoppingCart size={28} className="text-slate-400 dark:text-slate-500" />
                      </div>
 
                      <p className="font-semibold">Carrito vacío</p>
-                     <p className="mt-1 text-sm text-slate-500">Selecciona productos del catálogo.</p>
+                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Selecciona productos del catálogo.</p>
                   </div>
                ) : (
                   items.map((item) => (
-                     <div key={item.product.id} className="flex gap-3 border-b border-slate-100 pb-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-2xl">
+                     <div key={item.product.id} className="flex gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-2xl dark:bg-slate-800">
                            {productEmojis[item.product.category.id] ?? "📦"}
                         </div>
 
@@ -388,7 +346,7 @@ export default function PosPage() {
                               {item.product.name}
                            </h3>
 
-                           <p className="mt-1 text-xs text-slate-500">
+                           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                               {CurrencyFormatter.format(item.product.cost)}
                            </p>
 
@@ -396,7 +354,7 @@ export default function PosPage() {
                               <button
                                  onClick={() => decreaseItem(item.product.id)}
                                  aria-label={`Disminuir ${item.product.name}`}
-                                 className="cursor-pointer rounded-md border border-slate-200 p-1 hover:bg-slate-50"
+                                 className="cursor-pointer rounded-md border border-slate-200 p-1 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
                               >
                                  <Minus size={14} />
                               </button>
@@ -409,7 +367,7 @@ export default function PosPage() {
                                  onClick={() => increaseItem(item.product.id)}
                                  disabled={item.quantity >= item.product.stock}
                                  aria-label={`Aumentar ${item.product.name}`}
-                                 className="cursor-pointer rounded-md border border-slate-200 p-1 hover:bg-slate-50 disabled:opacity-40"
+                                 className="cursor-pointer rounded-md border border-slate-200 p-1 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
                               >
                                  <Plus size={14} />
                               </button>
@@ -417,14 +375,14 @@ export default function PosPage() {
                               <button
                                  onClick={() => removeItem(item.product.id)}
                                  aria-label={`Eliminar ${item.product.name}`}
-                                 className="cursor-pointer ml-auto rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                                 className="cursor-pointer ml-auto rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                               >
                                  <Trash2 size={17} />
                               </button>
                            </div>
                         </div>
 
-                        <p className="shrink-0 text-sm font-bold">
+                        <p className="shrink-0 text-sm font-bold text-slate-800 dark:text-slate-100">
                            {CurrencyFormatter.format(item.product.cost * item.quantity)}
                         </p>
                      </div>
@@ -433,17 +391,17 @@ export default function PosPage() {
             </div>
 
             {/* Cliente */}
-            <div className="relative border-t border-slate-200 p-5">
+            <div className="relative shrink-0 border-t border-slate-200 p-5 dark:border-slate-800">
                <label htmlFor="client-input" className="mb-3 block text-sm font-semibold">Cliente:</label>
                {
                   selectedClient ? (
-                     <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50 p-3">
+                     <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-950/30">
                         <div className="min-w-0">
-                           <p className="truncate text-sm font-semibold text-slate-800">
+                           <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                               {selectedClient.name} {selectedClient.lastname}
                            </p>
 
-                           <p className="mt-1 text-xs text-slate-500">
+                           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                               DNI: {selectedClient.dni}
                            </p>
                         </div>
@@ -457,7 +415,7 @@ export default function PosPage() {
                            }}
                            aria-label="Deseleccionar cliente"
                            title="Quitar cliente"
-                           className="cursor-pointer shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-red-100 hover:text-red-600"
+                           className="cursor-pointer shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-red-100 hover:text-red-600 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                         >
                            <X size={18} />
                         </button>
@@ -479,12 +437,12 @@ export default function PosPage() {
                            }}
                            placeholder="Buscar cliente o dni..."
                            autoComplete="off"
-                           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-purple-600 focus:ring-2 focus:ring-purple-100"
+                           className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-purple-600 focus:ring-2 focus:ring-purple-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-purple-500 dark:focus:ring-purple-900/30"
                         />
 
                         {
                            showClientDropdown && (
-                              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-48 overflow-y-auto custom-scrollbar rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
                                  {
                                     clientSearch.trim() === "" ? (
                                        <p className="px-4 py-3 text-center text-sm text-slate-500">
@@ -500,19 +458,19 @@ export default function PosPage() {
                                                 setClientSearch("");
                                                 setShowClientDropdown(false);
                                              }}
-                                             className="flex w-full cursor-pointer flex-col gap-1 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-purple-50"
+                                             className="flex w-full cursor-pointer flex-col gap-1 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-purple-50 dark:border-slate-800 dark:hover:bg-purple-950/40"
                                           >
-                                             <span className="text-sm font-medium text-slate-800">
+                                             <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
                                                 {client.name} {client.lastname}
                                              </span>
 
-                                             <span className="text-xs text-slate-500">
+                                             <span className="text-xs text-slate-500 dark:text-slate-400">
                                                 DNI: {client.dni}
                                              </span>
                                           </button>
                                        ))
                                     ) : (
-                                       <p className="px-4 py-3 text-center text-sm text-slate-500">
+                                       <p className="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">
                                           No se encontraron clientes.
                                        </p>
                                     )
@@ -526,15 +484,15 @@ export default function PosPage() {
             </div>
 
             {/* Resumen y pago */}
-            <div className="space-y-4 border-t border-slate-200 p-5">
+            <div className="shrink-0 space-y-4 border-t border-slate-200 p-5 dark:border-slate-800">
                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">Subtotal</span>
+                  <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
                   <span className="font-medium">{CurrencyFormatter.format(total)}</span>
                </div>
 
-               <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-                  <span className="font-semibold">Total a pagar</span>
-                  <span className="text-xl font-bold text-purple-600">
+               <div className="flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">Total a pagar</span>
+                  <span className="text-xl font-bold text-purple-600 dark:text-purple-400">
                      {CurrencyFormatter.format(total)}
                   </span>
                </div>
@@ -542,13 +500,13 @@ export default function PosPage() {
                <button
                   onClick={() => void processSale()}
                   disabled={items.length === 0 || processingSale}
-                  className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3.5 font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3.5 font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
                >
                   <CreditCard size={19} />
                   {processingSale ? "Registrando venta..." : "Procesar venta"}
                </button>
             </div>
          </aside>
-      </div>
+      </main>
    );
 }
