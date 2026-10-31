@@ -25,14 +25,7 @@ import { CurrencyFormatter } from "../helpers/currencyHelper";
 import type { SaleRequest } from "../types/requests/saleRequest";
 import { createSale } from "../services/saleService";
 import { toast } from "react-toastify";
-
-const authenticatedUser = {
-   id: 2,
-   name: "Carlos",
-   lastname: "Ramírez",
-   user: "cramirez",
-   role: 2
-}
+import { useAuth } from "../auth/AuthContext";
 
 const productEmojis: Record<number, string> = {
    1: "🌾",
@@ -44,7 +37,9 @@ const productEmojis: Record<number, string> = {
    8: "🍫",
 };
 
-export default function PosVenta() {
+export default function PosPage() {
+   const { user } = useAuth();
+
    const [loadingPage, setLoadingPage] = useState(true);
    const [pageError, setPageError] = useState("");
 
@@ -93,7 +88,7 @@ export default function PosVenta() {
    }, []);
 
    useEffect(() => {
-      void loadInitialData()
+      void loadInitialData();
    }, [loadInitialData]);
 
    const filteredProducts = useMemo(() => {
@@ -123,20 +118,20 @@ export default function PosVenta() {
       });
    }, [clients, clientSearch]);
 
-   async function processSale(userId: number | null) {
+   async function processSale() {
       if (items.length === 0) {
          toast.warning("Agrega productos antes de cobrar.");
          return;
       }
 
-      if(userId == null) {
-         toast.error("No se pudo identificar al usuario.");
+      if (!user) {
+         toast.error("No hay una sesión activa. Inicia sesión nuevamente.");
          return;
       }
 
       const request: SaleRequest = {
          client: selectedClient?.id ?? null,
-         user: userId,
+         user: user.id,
          details: items.map((item) => ({
             product: item.product.id,
             quantity: item.quantity
@@ -251,8 +246,8 @@ export default function PosVenta() {
                </div>
 
                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium">{authenticatedUser.name} {authenticatedUser.lastname}</p>
-                  <p className="text-xs text-slate-500">{authenticatedUser.role === 1 ? 'Admin': 'Colaborador'}</p>
+                  <p className="text-sm font-medium">{user?.name} {user?.lastname}</p>
+                  <p className="text-xs text-slate-500">{user?.role.id === 1 ? 'Admin': 'Colaborador'}</p>
                </div>
             </header>
 
@@ -491,7 +486,7 @@ export default function PosVenta() {
                            showClientDropdown && (
                               <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                                  {
-                                    clientSearch.trim() == "" ? (
+                                    clientSearch.trim() === "" ? (
                                        <p className="px-4 py-3 text-center text-sm text-slate-500">
                                           Escribe un nombre o DNI para buscar.
                                        </p>
@@ -517,7 +512,7 @@ export default function PosVenta() {
                                           </button>
                                        ))
                                     ) : (
-                                       <p className="px-4 py-3 text-center text-sm tesl500">
+                                       <p className="px-4 py-3 text-center text-sm text-slate-500">
                                           No se encontraron clientes.
                                        </p>
                                     )
@@ -545,7 +540,7 @@ export default function PosVenta() {
                </div>
 
                <button
-                  onClick={() => void processSale(authenticatedUser.id)}
+                  onClick={() => void processSale()}
                   disabled={items.length === 0 || processingSale}
                   className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3.5 font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                >
