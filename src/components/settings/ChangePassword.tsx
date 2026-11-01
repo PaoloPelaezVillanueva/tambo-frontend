@@ -1,20 +1,70 @@
 import { X } from "lucide-react";
 import { useState, type SubmitEvent } from "react";
 import { toast } from "react-toastify";
+import { changePassword } from "../../services/authService";
 
 interface ChangePasswordModalProps {
    isOpen: boolean;
    onClose: () => void;
 }
 
+interface FormInputProps {
+   id: string;
+   label: string;
+   value: string;
+   autoComplete: string;
+   disabled: boolean;
+   minLength?: number;
+   onChange: (value: string) => void;
+}
+
+function FormInput({id, label, value, autoComplete, disabled, minLength, onChange}: Readonly<FormInputProps>) {
+   return (
+      <div>
+         <label
+            htmlFor={id}
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
+         >
+            {label}
+         </label>
+
+         <input
+            id={id}
+            type="password"
+            autoComplete={autoComplete}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            disabled={disabled}
+            minLength={minLength}
+            required
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-purple-900/40"
+         />
+      </div>
+   );
+}
+
 export default function ChangePasswordModal({ isOpen, onClose }: Readonly<ChangePasswordModalProps>) {
    const [currentPassword, setCurrentPassword] = useState("");
    const [newPassword, setNewPassword] = useState("");
    const [confirmPassword, setConfirmPassword] = useState("");
+   const [loading, setLoading] = useState(false);
+
+   function resetForm() {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+   }
+
+   function handleClose() {
+      if (loading) return;
+
+      resetForm();
+      onClose();
+   }
 
    if (!isOpen) return null;
 
-   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+   const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault();
 
       if (!currentPassword || !newPassword || !confirmPassword) {
@@ -22,27 +72,55 @@ export default function ChangePasswordModal({ isOpen, onClose }: Readonly<Change
          return;
       }
 
+      if (newPassword.length < 6) {
+         toast.warning("La nueva contraseña debe tener al menos 6 carácteres.");
+         return;
+      }
+
+      if (newPassword === currentPassword) {
+         toast.warning("La nueva contraseña debe ser diferente a la actual.");
+         return;
+      }
+
       if (newPassword !== confirmPassword) {
          toast.warning("Las contraseñas nuevas no coinciden.");
          return;
       }
+      
+      try {
+         setLoading(true);
 
-      toast.info("El formulario está listo. Falta conectarlo al endpoint de cambio de contraseña.");
+         await changePassword({currentPassword, newPassword, confirmPassword});
+
+         toast.success("Contraseña actualizada correctamente.");
+
+         resetForm();
+         onClose();
+      } catch (error) {
+         toast.error(error instanceof Error
+            ? error.message
+            : "No se pudo actualizar la contraseña.",
+         );
+      } finally {
+         setLoading(false);
+      }
    };
 
+   if (!isOpen) return null;
+
    return (
-      <div
-         className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      >
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
          <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
+            disabled={loading}
             aria-label="Cerrar modal"
-            className="absolute inset-0 cursor-default bg-black/50"
+            className="absolute inset-0 cursor-default bg-black/50 disabled:cursor-not-allowed"
          />
          <div
             aria-modal="true"
             aria-labelledby="password-modal-title"
+            aria-busy={loading}
             className="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900"
          >
             <div className="mb-6 flex items-center justify-between">
@@ -55,71 +133,60 @@ export default function ChangePasswordModal({ isOpen, onClose }: Readonly<Change
 
                <button
                   type="button"
-                  onClick={onClose}
-                  className="cursor-pointer rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  onClick={handleClose}
+                  disabled={loading}
                   aria-label="Cerrar modal"
+                  className="cursor-pointer rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
                >
                   <X size={20} />
                </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-               <div>
-                  <label htmlFor="password" className="mb-1 block text-sm font-medium">
-                     Contraseña actual
-                  </label>
-                  <input
-                     id="password"
-                     type="password"
-                     autoComplete="current-password"
-                     value={currentPassword}
-                     onChange={(event) => setCurrentPassword(event.target.value)}
-                     className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800"
-                  />
-               </div>
+            <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
+               <FormInput
+                  id="current-password"
+                  label="Contraseña actual"
+                  value={currentPassword}
+                  onChange={setCurrentPassword}
+                  autoComplete="current-password"
+                  disabled={loading}
+               />
 
-               <div>
-                  <label htmlFor="new-password" className="mb-1 block text-sm font-medium">
-                     Nueva contraseña
-                  </label>
-                  <input
-                     id="new-password"
-                     type="password"
-                     autoComplete="new-password"
-                     value={newPassword}
-                     onChange={(event) => setNewPassword(event.target.value)}
-                     className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800"
-                  />
-               </div>
+               <FormInput
+                  id="new-password"
+                  label="Nueva contraseña"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  autoComplete="new-password"
+                  minLength={6}
+                  disabled={loading}
+               />
 
-               <div>
-                  <label htmlFor="repeat-password" className="mb-1 block text-sm font-medium">
-                     Confirmar nueva contraseña
-                  </label>
-                  <input
-                     id="repeat-password"
-                     type="password"
-                     autoComplete="new-password"
-                     value={confirmPassword}
-                     onChange={(event) => setConfirmPassword(event.target.value)}
-                     className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800"
-                  />
-               </div>
+               <FormInput
+                  id="confirm-password"
+                  label="Confirmar nueva contraseña"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  autoComplete="new-password"
+                  disabled={loading}
+               />
 
                <div className="flex justify-end gap-3 pt-2">
                   <button
                      type="button"
-                     onClick={onClose}
-                     className="cursor-pointer rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                     onClick={handleClose}
+                     disabled={loading}
+                     className="cursor-pointer rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   >
                      Cancelar
                   </button>
 
                   <button
                      type="submit"
-                     className="cursor-pointer rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                     disabled={loading}
+                     className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                     Guardar contraseña
+                     {loading ? "Actualizando..." : "Guardar contraseña"}
                   </button>
                </div>
             </form>
