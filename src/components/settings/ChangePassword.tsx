@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Eye, EyeOff, X } from "lucide-react";
 import { useState, type SubmitEvent } from "react";
 import { toast } from "react-toastify";
 import { changePassword } from "../../services/authService";
@@ -19,26 +19,45 @@ interface FormInputProps {
 }
 
 function FormInput({id, label, value, autoComplete, disabled, minLength, onChange}: Readonly<FormInputProps>) {
+   const [showPassword, setShowPassword] = useState(false);
+
    return (
       <div>
-         <label
-            htmlFor={id}
-            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
-         >
+         <label htmlFor={id} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             {label}
          </label>
 
-         <input
-            id={id}
-            type="password"
-            autoComplete={autoComplete}
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            disabled={disabled}
-            minLength={minLength}
-            required
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-purple-900/40"
-         />
+         <div className="relative">
+            <input
+               id={id}
+               type={showPassword ? "text" : "password"}
+               autoComplete={autoComplete}
+               value={value}
+               onChange={(event) => onChange(event.target.value)}
+               disabled={disabled}
+               minLength={minLength}
+               required
+               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-purple-900/40"
+            />
+
+            <button
+               type="button"
+               onClick={() => setShowPassword((previous) => !previous)}
+               disabled={disabled}
+               aria-label={
+                  showPassword
+                     ? "Ocultar contraseña"
+                     : "Mostrar contraseña"
+               }
+               className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 hover:text-slate-600"
+            >
+               {showPassword ? (
+                  <EyeOff size={19} />
+               ) : (
+                  <Eye size={19} />
+               )}
+            </button>
+         </div>
       </div>
    );
 }
