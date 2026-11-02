@@ -1,12 +1,32 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { LogOut, LockKeyhole, Monitor } from "lucide-react";
+import { LogOut, LockKeyhole, Monitor, Sun, Moon } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useTheme, type ThemeMode } from "../context/ThemeContext";
 import ChangePasswordModal from "../components/settings/ChangePassword";
 import { toast } from "react-toastify";
+import type { SelectOption } from "../components/ui/CustomSelect";
+import CustomSelect from "../components/ui/CustomSelect";
+
+const themeOptions: SelectOption<ThemeMode>[] = [
+   {
+      value: "light",
+      label: "Claro",
+      icon: Sun,
+   },
+   {
+      value: "dark",
+      label: "Oscuro",
+      icon: Moon,
+   },
+   {
+      value: "system",
+      label: "Sistema",
+      icon: Monitor,
+   },
+];
 
 export default function Config() {
    const { logout } = useAuth();
@@ -51,17 +71,13 @@ export default function Config() {
                      </div>
                   </div>
 
-                  <select
-                     value={theme}
-                     onChange={(event) =>
-                        setTheme(event.target.value as ThemeMode)
-                     }
-                     className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  >
-                     <option value="light">Claro</option>
-                     <option value="dark">Oscuro</option>
-                     <option value="system">Sistema</option>
-                  </select>
+                  <CustomSelect
+   value={theme}
+   options={themeOptions}
+   onChange={setTheme}
+   ariaLabel="Tema de pantalla"
+   className="w-48"
+/>
                </div>
 
                {/* Cambiar contraseña */}
