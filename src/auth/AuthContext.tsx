@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { LoginRequest } from "../types/auth";
 import type { User } from "../types/user";
 import { login as loginService, getMe } from "../services/authService";
+import { usePosStore } from "../store/posStore";
+import { useCartStore } from "../store/cartStore";
 
 interface AuthContextType {
    user: User | null;
@@ -62,6 +64,16 @@ export function AuthProvider({ children } : Readonly<{ children: ReactNode }>) {
 
       void restoreSession();
    }, [logout]);
+
+   useEffect(() => {
+      if(user) {
+         void usePosStore.getState().loadInitialData();
+      } else {
+         usePosStore.getState().reset();
+         useCartStore.getState().reset();
+      }
+   }, [user]);
+   
 
    const value = useMemo(
       () => ({ user, loading, login, logout }),

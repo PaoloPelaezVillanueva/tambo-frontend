@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
    Package,
    Search,
@@ -9,18 +9,15 @@ import {
    CreditCard,
    X
 } from "lucide-react";
-import { useCart } from "../hooks/useCart";
 import type { Client } from "../types/client";
-import { getClients } from "../services/clientService";
 import type { Category } from "../types/category";
-import { getCategories } from "../services/categoryService";
-import type { Product } from "../types/product";
-import { getProducts } from "../services/productService";
 import { CurrencyFormatter } from "../helpers/currencyHelper";
 import type { SaleRequest } from "../types/requests/saleRequest";
 import { createSale } from "../services/saleService";
 import { toast } from "react-toastify";
 import { useAuth } from "../auth/AuthContext";
+import { usePosStore } from "../store/posStore";
+import { useCartStore } from "../store/cartStore";
 
 const productEmojis: Record<number, string> = {
    1: "🌾",
@@ -35,62 +32,32 @@ const productEmojis: Record<number, string> = {
 export default function PosPage() {
    const { user } = useAuth();
 
-   const [loadingPage, setLoadingPage] = useState(true);
-   const [pageError, setPageError] = useState("");
+   const categories = usePosStore((state) => state.categories);
+   const products = usePosStore((state) => state.products);
+   const clients = usePosStore((state) => state.clients);
+
+   const loadingInitialData = usePosStore((state) => state.loadingInitialData);
+   const initialized = usePosStore((state) => state.initialized);
+   const error = usePosStore((state) => state.error);
+   const loadInitialData = usePosStore((state) => state.loadInitialData);
+   const refreshProducts = usePosStore((state) => state.refreshProducts);
 
    const [search, setSearch] = useState("");
    const [clientSearch, setClientSearch] = useState("");
-   
-   const [categories, setCategories] = useState<Category[]>([]);
-   const [products, setProducts] = useState<Product[]>([]);
-   const [clients, setClients] = useState<Client[]>([]);
 
-   const [selectedCategory, setSelectedCategory] = useState<Category>();
+   const [selectedCategory, setSelectedCategory] = useState<Category>({id: 0, category: 'Todos'});
    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
    const [showClientDropdown, setShowClientDropdown] = useState(false);
 
    const [processingSale, setProcessingSale] = useState(false);
-
-   const { items, totalItems, total, addItem, decreaseItem, increaseItem, removeItem, clearCart } = useCart();
-
-   const loadInitialData = useCallback(async () => {
-      setLoadingPage(true);
-      setPageError("");
-
-      try {
-         const [categoriesData, productsData, clientsData] = await Promise.all([
-            getCategories(),
-            getProducts(),
-            getClients()
-         ]);
-
-         const categoriesWithAll : Category[] = [
-            { id: 0, category: "Todos"},
-            ...categoriesData
-         ];
-
-         setCategories(categoriesWithAll);
-         setProducts(productsData);
-         setClients(clientsData);
-
-         setSelectedCategory(categoriesWithAll[0]);
-      } catch (error) {
-         console.error("Error al cargar datos iniciales:", error);
-         setPageError("No se pudieron cargar los datos iniciales para el POS de venta.");
-      } finally {
-         setLoadingPage(false);
-      }
-   }, []);
-
-   useEffect(() => {
-      void loadInitialData();
-   }, [loadInitialData]);
+   
+   const {items, totalItems, total, addItem, decreaseItem, increaseItem, removeItem, clearCart} = useCartStore();
 
    const filteredProducts = useMemo(() => {
       return products.filter((product) => {
          const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase())
 
-         const matchesCategory = selectedCategory?.category === "Todos" || product.category.category === selectedCategory?.category;
+         const matchesCategory = selectedCategory.id === 0 || product.category.category === selectedCategory?.category;
 
          return matchesSearch && matchesCategory;
       });
@@ -138,15 +105,8 @@ export default function PosPage() {
 
          await createSale(request);
 
-         clearCart();
-         setSelectedClient(null);
-         setClientSearch("");
-         setShowClientDropdown(false);
-
          try {
-            const updatedProducts = await getProducts();
-            setProducts(updatedProducts);
-
+            await refreshProducts();
             toast.success("Venta registrada correctamente.");
          } catch (refreshError) {
             console.error("Error al actualizar el producto:", refreshError);
@@ -161,11 +121,16 @@ export default function PosPage() {
                : "No se pudo registrar la venta."
          );
       } finally {
+         clearCart();
+         setSelectedClient(null);
+         setClientSearch("");
+         setShowClientDropdown(false);
+
          setProcessingSale(false);
       }
    }
 
-   if(loadingPage) {
+   if(loadingInitialData || (!initialized && !error)) {
       return (
          <div className="flex h-full min-h-0 items-center justify-center bg-slate-50 dark:bg-slate-950">
             <div className="flex flex-col items-center gap-4">
@@ -183,7 +148,7 @@ export default function PosPage() {
       );
    }
 
-   if (pageError) {
+   if (error) {
       return (
          <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-slate-50 px-4">
             <p className="text-lg font-medium text-red-600">
@@ -191,7 +156,7 @@ export default function PosPage() {
             </p>
 
             <p className="text-center text-sm text-slate-600">
-               {pageError}
+               {error}
             </p>
 
             <button
