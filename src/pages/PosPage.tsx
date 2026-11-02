@@ -9,7 +9,6 @@ import {
    CreditCard,
    X
 } from "lucide-react";
-import type { Client } from "../types/client";
 import type { Category } from "../types/category";
 import { CurrencyFormatter } from "../helpers/currencyHelper";
 import type { SaleRequest } from "../types/requests/saleRequest";
@@ -46,12 +45,11 @@ export default function PosPage() {
    const [clientSearch, setClientSearch] = useState("");
 
    const [selectedCategory, setSelectedCategory] = useState<Category>({id: 0, category: 'Todos'});
-   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
    const [showClientDropdown, setShowClientDropdown] = useState(false);
 
    const [processingSale, setProcessingSale] = useState(false);
    
-   const {items, totalItems, total, addItem, decreaseItem, increaseItem, removeItem, clearCart} = useCartStore();
+   const {items, totalItems, total, selectedClient, setSelectedClient, addItem, decreaseItem, increaseItem, removeItem, clearCart} = useCartStore();
 
    const filteredProducts = useMemo(() => {
       return products.filter((product) => {

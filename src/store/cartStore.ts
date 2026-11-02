@@ -1,11 +1,15 @@
 import { create } from "zustand";
 import type { CartItem } from "../types/cart";
 import type { Product } from "../types/product";
+import type { Client } from "../types/client";
 
 interface CartState {
    items: CartItem[];
    totalItems: number;
    total: number;
+
+   selectedClient: Client | null;
+   setSelectedClient: (client: Client | null) => void;
 
    addItem: (product: Product) => void;
    decreaseItem: (productId: number) => void;
@@ -27,6 +31,9 @@ export const useCartStore = create<CartState>((set) => ({
    items: [],
    totalItems: 0,
    total: 0,
+
+   selectedClient: null,
+   setSelectedClient: (client) => set({ selectedClient: client }),
 
    addItem: (product) => {
       set((state) => {
