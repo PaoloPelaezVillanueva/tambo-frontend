@@ -8,3 +8,9 @@ export interface LoginResponse {
    tokenType: string;
    expiresIn: number;
 }
+
+export interface ChangePasswordRequest {
+   currentPassword: string;
+   newPassword: string;
+   confirmPassword: string;
+}

@@ -1,4 +1,4 @@
-import type { LoginRequest, LoginResponse } from "../types/auth";
+import type { ChangePasswordRequest, LoginRequest, LoginResponse } from "../types/auth";
 import type { User } from "../types/user";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -36,4 +36,35 @@ export async function getMe(accessToken: string, tokenType: string): Promise<Use
    }
 
    return response.json() as Promise<User>;
+}
+
+export async function changePassword(request: ChangePasswordRequest): Promise<void> {
+   const accessToken = sessionStorage.getItem("accessToken");
+   const tokenType = sessionStorage.getItem("tokenType") ?? "Bearer";
+
+   if (!accessToken) {
+      throw new Error("No hay una sesión activa. Inicia sesión nuevamente.");
+   }
+
+   const response = await fetch(`${API_URL}/auth/change-password`, {
+      method: "PATCH",
+      headers: {
+         "Content-Type": "application/json",
+         Authorization: `${tokenType} ${accessToken}`,
+      },
+      body: JSON.stringify(request),
+   });
+
+   if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+         throw new Error("No tienes autorización para cambiar la contraseña.");
+      }
+
+      if (response.status === 400) {
+         const error = await response.json() as { message?: string };
+         throw new Error(error.message ?? "Verifica los datos ingresados.");
+      }
+
+      throw new Error("No se pudo actualizar la contraseña.");
+   }
 }

@@ -5,14 +5,18 @@ import LoginPage from "./pages/Login";
 import { useAuth } from "./auth/AuthContext";
 import { Navigate, Route, Routes } from "react-router";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import ConfigPage from "./pages/Config";
+import Layout from "./layout/Layout";
+import { useTheme } from "./context/ThemeContext";
 
 function App() {
   const { user, loading } = useAuth();
+  const { resolvedTheme } = useTheme();
 
   if(loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
+      <div className="flex min-h-screen items-center justify-center dark:bg-slate-950">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600 dark:border-purple-400 dark:border-t-purple-900" />
       </div>
     );
   }
@@ -30,7 +34,10 @@ function App() {
         />
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/pos" element={<PosPage />} />
+          <Route element={<Layout />}>
+            <Route path="/pos" element={<PosPage />} />
+            <Route path="/config" element={<ConfigPage />} />
+          </Route>
         </Route>
 
         <Route
@@ -48,7 +55,7 @@ function App() {
         position="top-right"
         autoClose={3000}
         newestOnTop
-        theme="light"
+        theme={resolvedTheme}
       />
     </>
   );
